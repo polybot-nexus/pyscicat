@@ -85,7 +85,7 @@ class ScicatClient:
                 self._password is not None
             ), "SciCat login credentials (username, password) must be provided if token is not provided"
             self._token = get_token(self._base_url, self._username, self._password)
-            self._headers["Authorization"] = "Bearer {}".format(self._token)
+        self._headers["Authorization"] = "Bearer {}".format(self._token)
 
     def _send_to_scicat(self, cmd: str, endpoint: str, data: BaseModel = None):
         """sends a command to the SciCat API server using url and token, returns the response JSON
