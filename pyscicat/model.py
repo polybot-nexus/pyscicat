@@ -90,7 +90,9 @@ class Job(MongoQueryable):
     executionTime: Optional[str] = None
     jobParams: Optional[dict] = None
     jobStatusMessage: Optional[str] = None
-    datasetList: Optional[dict] = None  # documentation says dict, but should maybe be list?
+    datasetList: Optional[
+        dict
+    ] = None  # documentation says dict, but should maybe be list?
     jobResultObject: Optional[dict] = None  # ibid.
 
 
@@ -115,7 +117,9 @@ class Dataset(Ownable):
     creationTime: str  # datetime
     datasetName: Optional[str] = None
     description: Optional[str] = None
-    history: Optional[List[dict]] = None  # list of foreigh key ids to the Messages table
+    history: Optional[
+        List[dict]
+    ] = None  # list of foreigh key ids to the Messages table
     instrumentId: Optional[str] = None
     isPublished: Optional[bool] = False
     keywords: Optional[List[str]] = None
@@ -187,25 +191,31 @@ class Datablock(Ownable):
 
     id: Optional[str] = None
     # archiveId: str = None  listed in catamel model, but comes back invalid?
-    size: int
+
     packedSize: Optional[int] = None
     chkAlg: Optional[int] = None
     version: str = None
     instrumentGroup: Optional[str] = None
-    dataFileList: List[DataFile]
     datasetId: str
 
 
-class OrigDatablock(Ownable):
+class CreateDatasetOrigDatablockDto(BaseModel):
+    """
+    DTO for creating a new dataset with an original datablock
+    """
+
+    chkAlg: Optional[int] = None
+    dataFileList: List[DataFile]
+    size: int
+
+
+class OrigDatablock(Ownable, CreateDatasetOrigDatablockDto):
     """
     An Original Datablock maps between a Dataset and contains DataFiles
     """
 
     id: Optional[str] = None
-    # archiveId: str = None  listed in catamel model, but comes back invalid?
-    size: int
     instrumentGroup: Optional[str] = None
-    dataFileList: List[DataFile]
     datasetId: str
 
 

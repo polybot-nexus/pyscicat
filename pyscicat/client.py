@@ -5,7 +5,6 @@ import base64
 import hashlib
 import logging
 import json
-import re
 from typing import Optional
 from urllib.parse import urljoin, quote_plus
 
@@ -15,9 +14,9 @@ import requests
 
 from pyscicat.model import (
     Attachment,
+    CreateDatasetOrigDatablockDto,
     Dataset,
     Instrument,
-    OrigDatablock,
     Proposal,
     Sample,
 )
@@ -86,7 +85,7 @@ class ScicatClient:
                 self._password is not None
             ), "SciCat login credentials (username, password) must be provided if token is not provided"
             self._token = get_token(self._base_url, self._username, self._password)
-            self._headers["Authorization"] = "Bearer {}".format(self._token)
+        self._headers["Authorization"] = "Bearer {}".format(self._token)
 
     def _send_to_scicat(self, cmd: str, endpoint: str, data: BaseModel = None):
         """sends a command to the SciCat API server using url and token, returns the response JSON
@@ -108,25 +107,17 @@ class ScicatClient:
         endpoint: str,
         data: BaseModel = None,
         operation: str = "",
-        allow_404=False,
     ) -> Optional[dict]:
         response = self._send_to_scicat(cmd=cmd, endpoint=endpoint, data=data)
-        result = response.json()
+
+        result = response.json() if len(response.content) > 0 else None
         if not response.ok:
-            err = result.get("error", {})
-            if (
-                allow_404
-                and response.status_code == 404
-                and re.match(r"Unknown (.+ )?id", err.get("message", ""))
-            ):
-                # The operation failed but because the object does not exist in SciCat.
-                logger.error("Error in operation %s: %s", operation, err)
-                return None
-            raise ScicatCommError(f"Error in operation {operation}: {err}")
+            raise ScicatCommError(f"Error in operation {operation}: {result}")
+
         logger.info(
             "Operation '%s' successful%s",
             operation,
-            f"pid={result['pid']}" if "pid" in result else "",
+            f"pid={result['pid']}" if result and "pid" in result else "",
         )
         return result
 
@@ -200,7 +191,9 @@ class ScicatClient:
     """
     update_dataset = datasets_update
 
-    def datasets_origdatablock_create(self, origdatablock: OrigDatablock) -> dict:
+    def datasets_origdatablock_create(
+        self, dataset_id: str, datablockDto: CreateDatasetOrigDatablockDto
+    ) -> dict:
         """
         Create a new SciCat Dataset OrigDatablock
         This function has been renamed.
@@ -223,11 +216,11 @@ class ScicatClient:
             Raises if a non-20x message is returned
 
         """
-        endpoint = f"Datasets/{quote_plus(origdatablock.datasetId)}/origdatablocks"
+        endpoint = f"Datasets/{quote_plus(dataset_id)}/origdatablocks"
         return self._call_endpoint(
             cmd="post",
             endpoint=endpoint,
-            data=origdatablock,
+            data=datablockDto,
             operation="datasets_origdatablock_create",
         )
 
@@ -518,7 +511,6 @@ class ScicatClient:
             cmd="get",
             endpoint=f"Datasets/fullquery?{query}",
             operation="datasets_find",
-            allow_404=True,
         )
 
     """
@@ -559,7 +551,7 @@ class ScicatClient:
         filter_fields = json.dumps(filter_fields)
         endpoint = f'Datasets?filter={{"where":{filter_fields}}}'
         return self._call_endpoint(
-            cmd="get", endpoint=endpoint, operation="datasets_get_many", allow_404=True
+            cmd="get", endpoint=endpoint, operation="datasets_get_many"
         )
 
     """
@@ -595,7 +587,6 @@ class ScicatClient:
             cmd="get",
             endpoint=endpoint,
             operation="published_data_get_many",
-            allow_404=True,
         )
 
     """
@@ -620,7 +611,6 @@ class ScicatClient:
             cmd="get",
             endpoint=f"Datasets/{quote_plus(pid)}",
             operation="datasets_get_one",
-            allow_404=True,
         )
 
     get_dataset_by_pid = datasets_get_one
@@ -659,7 +649,6 @@ class ScicatClient:
             cmd="get",
             endpoint=endpoint,
             operation="instruments_get_one",
-            allow_404=True,
         )
 
     get_instrument = instruments_get_one
@@ -685,7 +674,6 @@ class ScicatClient:
             cmd="get",
             endpoint=f"Samples/{quote_plus(pid)}",
             operation="samples_get_one",
-            allow_404=True,
         )
 
     get_sample = samples_get_one
@@ -707,7 +695,7 @@ class ScicatClient:
             The proposal with the requested pid
         """
         return self._call_endpoint(
-            cmd="get", endpoint=f"Proposals/{quote_plus(pid)}", allow_404=True
+            cmd="get", endpoint=f"Proposals/{quote_plus(pid)}"
         )
 
     get_proposal = proposals_get_one
@@ -732,7 +720,6 @@ class ScicatClient:
             cmd="get",
             endpoint=f"Datasets/{quote_plus(pid)}/origdatablocks",
             operation="datasets_origdatablocks_get_one",
-            allow_404=True,
         )
 
     get_dataset_origdatablocks = datasets_origdatablocks_get_one
@@ -757,7 +744,6 @@ class ScicatClient:
             cmd="delete",
             endpoint=f"Datasets/{quote_plus(pid)}",
             operation="datasets_delete",
-            allow_404=True,
         )
 
     delete_dataset = datasets_delete
@@ -823,9 +809,8 @@ def _log_in_via_auth_msad(base_url, username, password):
         verify=True,
     )
     if not response.ok:
-        err = response.json()["error"]
         logger.error(
-            f'Error retrieving token for user: {err["name"]}, {err["statusCode"]}: {err["message"]}'
+            f'Error retrieving token for user: {response.json()}'
         )
         raise ScicatLoginError(response.content)
 
@@ -846,8 +831,7 @@ def get_token(base_url, username, password):
     if response.ok:
         return response.json()["access_token"]
 
-    err = response.json()["error"]
     logger.error(
-        f' Failed log in:  {err["name"]}, {err["statusCode"]}: {err["message"]}'
+        f' Failed log in:  {response.json()}'
     )
     raise ScicatLoginError(response.content)

@@ -14,7 +14,7 @@ from pyscicat.client import (
 
 from pyscicat.model import (
     Attachment,
-    Datablock,
+    CreateDatasetOrigDatablockDto,
     DataFile,
     Instrument,
     Proposal,
@@ -138,14 +138,13 @@ def test_scicat_ingest():
 
         # Datablock with DataFiles
         data_file = DataFile(path="/foo/bar", size=42)
-        data_block = Datablock(
+        data_block_dto = CreateDatasetOrigDatablockDto(
             size=42,
-            version="1",
             datasetId=dataset_id,
             dataFileList=[data_file],
-            **ownable.dict()
+
         )
-        scicat.upload_dataset_origdatablock(data_block)
+        scicat.upload_dataset_origdatablock(dataset_id, data_block_dto)
 
         # Attachment
         attachment = Attachment(
@@ -187,17 +186,9 @@ def test_get_dataset():
 def test_get_nonexistent_dataset():
     with requests_mock.Mocker() as mock_request:
         mock_request.get(
-            local_url + "Datasets/74",
-            status_code=404,
-            reason="Not Found",
-            json={
-                "error": {
-                    "statusCode": 404,
-                    "name": "Error",
-                    "message": 'Unknown "Dataset" id "74".',
-                    "code": "MODEL_NOT_FOUND",
-                }
-            },
+            local_url + "datasets/74",
+            status_code=200,
+            content=b''
         )
         client = from_token(base_url=local_url, token="a_token")
         assert client.datasets_get_one("74") is None
@@ -206,7 +197,7 @@ def test_get_nonexistent_dataset():
 def test_get_dataset_bad_url():
     with requests_mock.Mocker() as mock_request:
         mock_request.get(
-            "http://localhost:3000/api/v100/Datasets/53",
+            "http://localhost:3000/api/v100/datasets/53",
             status_code=404,
             reason="Not Found",
             json={
