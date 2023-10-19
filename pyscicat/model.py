@@ -96,7 +96,7 @@ class Job(MongoQueryable):
     jobResultObject: Optional[dict] = None  # ibid.
 
 
-class Instrument(MongoQueryable):
+class InstrumentOrig(MongoQueryable):
     """
     Instrument class, most of this is flexibly definable in customMetadata
     """
@@ -105,6 +105,14 @@ class Instrument(MongoQueryable):
     name: str
     customMetadata: Optional[dict] = None
 
+class Instrument(MongoQueryable):
+    """
+    Instrument class, most of this is flexibly definable in customMetadata
+    """
+
+    uniqueName: Optional[str] = None
+    name: str
+    customMetadata: Optional[dict] = None
 
 class Dataset(Ownable):
     """
