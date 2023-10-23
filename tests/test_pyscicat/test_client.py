@@ -9,6 +9,7 @@ from pyscicat.client import (
     encode_thumbnail,
     get_file_mod_time,
     get_file_size,
+    ScicatClient,
     ScicatCommError,
 )
 
@@ -217,5 +218,14 @@ def test_initializers():
     with requests_mock.Mocker() as mock_request:
         add_mock_requests(mock_request)
 
-        client = from_token(local_url, "let me in!")
-        assert client._token == "let me in!"
+        client = from_token(local_url, "a_token")
+        assert client._token == "a_token"
+        assert client._headers['Authorization'] == "Bearer a_token"
+
+        client = from_credentials(local_url, "Zaphod", "heartofgold")
+        assert client._token == "a_token"
+        assert client._headers['Authorization'] == "Bearer a_token"
+
+        client = ScicatClient(local_url, "a_token")
+        assert client._token == "a_token"
+        assert client._headers['Authorization'] == "Bearer a_token"
