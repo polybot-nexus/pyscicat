@@ -111,7 +111,7 @@ class ScicatClient:
         response = self._send_to_scicat(cmd=cmd, endpoint=endpoint, data=data)
         result = response.json() if len(response.content) > 0 else None
         if not response.ok:
-            raise ScicatCommError(f"Error in operation {operation}: {result}")
+            raise ScicatCommError(f"Error in operation {operation}: {response}")
 
         logger.info(
             "Operation '%s' successful%s",
