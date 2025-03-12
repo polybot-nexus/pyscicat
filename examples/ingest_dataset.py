@@ -6,14 +6,14 @@ from pyscicat.model import Attachment, Datablock, DataFile, Dataset, Ownable, Or
 
 # Create a client object. The account used should have the ingestor role in SciCat
 scicat = ScicatClient(
-    base_url="http://localhost:3000/api/v3", username="ingestor", password="aman"
+    base_url="http://192.168.4.150:3000/api/v3", username="ingestor", password="aman"
 )
 print('scicat', scicat)
 
 # Create an Ownable that will get reused for several other Model objects
 ownable = Ownable(ownerGroup="magrathea", accessGroups=["deep_though"])
 # thumb_path = Path(__file__).parent.parent / "test/data/SciCatLogo.png"
-thumb_path = Path(r'C:\Users\avriza\Desktop\pyscicat\tests\test_pyscicat\data\SciCatLogo.png')
+thumb_path = Path('/Users/dozgulbas/scicat/test.png')
 
 
 # Create a RawDataset object with settings for your choosing. Notice how
