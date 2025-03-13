@@ -36,6 +36,17 @@ def main():
         source_file, "successfully uploaded as object",
         destination_file, "to bucket", bucket_name,
     )
+    
+    download_path = "test.png"
+    try:
+        client.fget_object(bucket_name, destination_file, download_path)
+        print(f"File '{destination_file}' downloaded successfully as '{download_path}'")
+    except S3Error as err:
+        print(f"Error downloading file: {err}")
+
+    objects = client.list_objects(bucket_name)
+    for obj in objects:
+        print(obj.object_name)
 
 if __name__ == "__main__":
     try:
