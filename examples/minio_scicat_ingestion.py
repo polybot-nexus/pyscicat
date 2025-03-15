@@ -8,18 +8,18 @@ from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, OrigDatablock, DataFile, Ownable
 
 # MinIO Configuration
-MINIO_ENDPOINT = "your-minio-ip:9000"
-MINIO_ACCESS_KEY = "your-access-key"
-MINIO_SECRET_KEY = "your-secret-key"
+MINIO_ENDPOINT = "192.168.4.150:9000"
+MINIO_ACCESS_KEY = "rpl"
+MINIO_SECRET_KEY = "rplrplrpl"
 MINIO_BUCKET = "scicat-data"
 
 # SciCat Configuration
-SCICAT_URL = "http://your-scicat-ip:3000/api/v3"
+SCICAT_URL = "http://192.168.4.150:3000/api/v3"
 SCICAT_USERNAME = "ingestor"
-SCICAT_PASSWORD = "your-password"
+SCICAT_PASSWORD = "aman"
 
 # File to ingest
-FILE_PATH = "path/to/your/file.json"  # Change this to the actual file path
+FILE_PATH = "/Users/dozgulbas/Desktop/pedot_pss_all_data_set/Train_9_2022-02-22_19-33-07_e35a902a26.json"  # Change this to the actual file path
 
 # Initialize MinIO Client
 minio_client = Minio(
@@ -92,10 +92,9 @@ def extract_metadata(file_path: str) -> dict:
 # Register dataset in SciCat
 def register_in_scicat(file_path: str, file_url: str):
     metadata = extract_metadata(file_path)
-    ownable = Ownable(ownerGroup="data-team", accessGroups=["scientists"])
+    ownable = Ownable(ownerGroup="rpl-team", accessGroups=["rpl"])
     dataset = Dataset(
         owner="data_ingestor",
-        ownerGroup="data-team",
         contactEmail="data@lab.org",
         creationLocation="Lab Server",
         creationTime=str(pd.Timestamp.now()),
@@ -104,10 +103,11 @@ def register_in_scicat(file_path: str, file_url: str):
         dataFormat=metadata["file_type"],
         sourceFolder=file_url,
         scientificMetadata=metadata,
-        **ownable.dict()
+        **ownable.model_dump()  # ✅ Use `model_dump()` instead of `.dict()`
     )
     dataset_id = scicat_client.upload_new_dataset(dataset)
-    
+    print("Sending dataset to SciCat:")
+    print(dataset.model_dump_json(indent=2))  # Debug output
     # Register OrigDatablock
     data_file = DataFile(path=file_url, size=metadata["size"])
     datablock = OrigDatablock(
@@ -115,10 +115,11 @@ def register_in_scicat(file_path: str, file_url: str):
         dataFileList=[data_file],
         size=metadata["size"],
         version="1",
-        **ownable.dict()
+        **ownable.model_dump()  # ✅ Fix ownerGroup duplication issue
     )
     scicat_client.upload_dataset_origdatablock(dataset_id, datablock)
     print(f"Registered dataset {dataset_id} with metadata in SciCat.")
+
 
 if __name__ == "__main__":
     ensure_minio_bucket()
