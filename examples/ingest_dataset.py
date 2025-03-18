@@ -33,7 +33,7 @@ dataset = Dataset(
     sourceFolder="/foo/bar",
     scientificMetadata={"a": "field"},
     sampleId="gargleblaster",
-    **ownable.dict()
+    **ownable.model_dump()
 )
 dataset_id = scicat.upload_new_dataset(dataset)
 print('dataset_id', dataset_id)
@@ -51,6 +51,6 @@ attachment = Attachment(
     datasetId=dataset_id,
     thumbnail=encode_thumbnail(thumb_path),
     caption="scattering image",
-    **ownable.dict()
+    **ownable.model_dump()
 )
 scicat.upload_attachment(attachment)
