@@ -41,7 +41,7 @@ print('dataset_id', dataset_id)
 # Create Datablock with DataFiles
 data_file = DataFile(path="file.h5", size=42)
 data_block = OrigDatablock(
-    size=42, version='1', datasetId=dataset_id, dataFileList=[data_file], **ownable.dict()
+    size=42, version='1', datasetId=dataset_id, dataFileList=[data_file], **ownable.model_dump()
 )
 print(data_block.__dict__)
 scicat.upload_dataset_origdatablock(dataset_id=dataset_id, datablockDto=data_block)
