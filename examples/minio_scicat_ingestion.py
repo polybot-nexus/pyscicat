@@ -1,14 +1,17 @@
 import os
+from datetime import datetime
+
 import json
 import pandas as pd
 from pathlib import Path
 from minio import Minio
 from minio.error import S3Error
-from pyscicat.client import ScicatClient
-from pyscicat.model import Dataset, OrigDatablock, DataFile, Ownable
+from pyscicat.client import ScicatClient, encode_thumbnail
+from pyscicat.model import Dataset, OrigDatablock, DataFile, Ownable, Attachment
 
 # MinIO Configuration
 MINIO_ENDPOINT = "192.168.4.150:9000"
+MINIO_FRONTEND_ENDPOINT = "192.168.4.150:9001"
 MINIO_ACCESS_KEY = "rpl"
 MINIO_SECRET_KEY = "rplrplrpl"
 MINIO_BUCKET = "scicat-data"
@@ -20,6 +23,7 @@ SCICAT_PASSWORD = "aman"
 
 # File to ingest
 FILE_PATH = "/Users/dozgulbas/Desktop/pedot_pss_all_data_set/Train_9_2022-02-22_19-33-07_e35a902a26.json"  # Change this to the actual file path
+THUMBNAIL_PATH = "/Users/dozgulbas/scicat/test.png"
 
 # Initialize MinIO Client
 minio_client = Minio(
@@ -46,8 +50,41 @@ def ensure_minio_bucket():
 def upload_to_minio(file_path: str) -> str:
     file_name = Path(file_path).name
     minio_client.fput_object(MINIO_BUCKET, file_name, file_path)
-    file_url = f"http://{MINIO_ENDPOINT}/{MINIO_BUCKET}/{file_name}"
+    file_url = f"http://{MINIO_FRONTEND_ENDPOINT}/{MINIO_BUCKET}/{file_name}"
     return file_url
+
+# Upload and attach a thumbnail to SciCat
+def upload_thumbnail(dataset_id: str, thumbnail_path: str, caption: str = "Thumbnail Image"):
+    ownable = Ownable(ownerGroup="rpl-team", accessGroups=["rpl","public"])
+    
+    if not os.path.exists(thumbnail_path):
+        print(f"Thumbnail file {thumbnail_path} does not exist.")
+        return
+    
+    try:
+        encoded_thumbnail = encode_thumbnail(Path(thumbnail_path))
+        attachment = Attachment(
+            datasetId=dataset_id,
+            thumbnail=encoded_thumbnail,
+            caption=caption,
+            **ownable.model_dump()
+        )
+        
+        print("Uploading thumbnail to SciCat:")
+        scicat_client.upload_attachment(attachment)
+        print("Thumbnail uploaded successfully.")
+    except Exception as e:
+        print(f"Error uploading thumbnail: {e}")
+
+# Convert scientificMetadata fields to valid SciCat format
+def sanitize_metadata(metadata: dict) -> dict:
+    cleaned_metadata = {}
+    for key, value in metadata.items():
+        if isinstance(value, list) or isinstance(value, dict):
+            cleaned_metadata[key] = json.dumps(value)  # Convert lists and dicts to JSON strings
+        else:
+            cleaned_metadata[key] = value  # Keep numbers, strings, booleans as they are
+    return cleaned_metadata
 
 # Extract metadata from JSON/CSV
 def extract_metadata(file_path: str) -> dict:
@@ -87,24 +124,28 @@ def extract_metadata(file_path: str) -> dict:
         metadata["columns"] = list(df.columns)
         metadata["sample_content"] = df.head(1).to_dict()
     
-    return metadata
+    return sanitize_metadata(metadata)  # Ensure SciCat-safe format
 
 # Register dataset in SciCat
 def register_in_scicat(file_path: str, file_url: str):
     metadata = extract_metadata(file_path)
-    ownable = Ownable(ownerGroup="rpl-team", accessGroups=["rpl"])
+    ownable = Ownable(ownerGroup="rpl-team", accessGroups=["rpl","public"])
     dataset = Dataset(
-        owner="data_ingestor",
-        contactEmail="data@lab.org",
-        creationLocation="Lab Server",
-        creationTime=str(pd.Timestamp.now()),
+        path=file_path,
+        size=metadata["size"],
+        owner="rpl",
+        contactEmail="rpl@anl.gov",
+        creationLocation="RPL Server",
+        creationTime=datetime.now().astimezone().isoformat(),
         type="raw",
         proposalId="experiment-001",
         dataFormat=metadata["file_type"],
         sourceFolder=file_url,
         scientificMetadata=metadata,
-        **ownable.model_dump()  # ✅ Use `model_dump()` instead of `.dict()`
+        isPublished=True,
+        **ownable.model_dump()  
     )
+
     dataset_id = scicat_client.upload_new_dataset(dataset)
     print("Sending dataset to SciCat:")
     print(dataset.model_dump_json(indent=2))  # Debug output
@@ -115,11 +156,11 @@ def register_in_scicat(file_path: str, file_url: str):
         dataFileList=[data_file],
         size=metadata["size"],
         version="1",
-        **ownable.model_dump()  # ✅ Fix ownerGroup duplication issue
+        **ownable.model_dump() 
     )
     scicat_client.upload_dataset_origdatablock(dataset_id, datablock)
     print(f"Registered dataset {dataset_id} with metadata in SciCat.")
-
+    upload_thumbnail(dataset_id, THUMBNAIL_PATH)
 
 if __name__ == "__main__":
     ensure_minio_bucket()
