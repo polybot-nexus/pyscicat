@@ -5,7 +5,7 @@ import json
 import pandas as pd
 from pathlib import Path
 from minio import Minio
-from minio.error import S3Error
+
 from pyscicat.client import ScicatClient, encode_thumbnail
 from pyscicat.model import Dataset, OrigDatablock, DataFile, Ownable, Attachment
 
@@ -22,7 +22,7 @@ SCICAT_USERNAME = "ingestor"
 SCICAT_PASSWORD = "aman"
 
 # File to ingest
-FILE_PATH = "/Users/dozgulbas/Desktop/pedot_pss_all_data_set/Train_9_2022-02-22_19-33-07_e35a902a26.json"  # Change this to the actual file path
+FILE_PATH = "/Users/dozgulbas/scicat/pedot_pss_all_data_set/Train_6_2022-01-25_14-25-53_c0f0998bd8.json"  # Change this to the actual file path
 THUMBNAIL_PATH = "/Users/dozgulbas/scicat/test.png"
 
 # Initialize MinIO Client
@@ -41,9 +41,10 @@ scicat_client = ScicatClient(
 # Ensure MinIO bucket exists
 def ensure_minio_bucket():
     try:
-        if not minio_client.bucket_exists(MINIO_BUCKET):
+        exists = minio_client.bucket_exists(MINIO_BUCKET)
+        if not exists:
             minio_client.make_bucket(MINIO_BUCKET)
-    except S3Error as err:
+    except Exception as err:
         print(f"Error checking/creating bucket: {err}")
 
 # Upload file to MinIO
