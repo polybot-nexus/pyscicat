@@ -1,5 +1,6 @@
 import os
 import json
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 import urllib.parse
@@ -7,9 +8,11 @@ import urllib.parse
 import pandas as pd
 from minio import Minio
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
 import httpx
+import threading
+import uvicorn
 
 from pyscicat.client import ScicatClient, encode_thumbnail
 from pyscicat.model import Dataset, OrigDatablock, DataFile, Ownable, Attachment
@@ -27,9 +30,16 @@ SCICAT_PASSWORD = "aman"
 
 ORCID_CLIENT_ID = "APP-Z7EPO5WHGU2XEWPJ"
 ORCID_CLIENT_SECRET = "c86d92d8-b809-426c-a7a0-36d42a8c9f50"
-ORCID_REDIRECT_URI = "https://caea-47-152-133-226.ngrok-free.app/auth/callback"
+ORCID_REDIRECT_URI = "https://3c5a-47-152-133-226.ngrok-free.app/auth/callback"
 ORCID_AUTH_URL = "https://orcid.org/oauth/authorize"
 ORCID_TOKEN_URL = "https://orcid.org/oauth/token"
+
+
+AUTHORIZED_ORCIDS = {
+    "0000-0002-1234-5678",
+    "0000-0003-9876-5432",
+    "0000-0003-3653-4779"
+}
 
 FILE_PATH = "/Users/dozgulbas/scicat/pedot_pss_all_data_set/Train_6_2022-01-25_14-25-53_c0f0998bd8.json"
 THUMBNAIL_PATH = "/Users/dozgulbas/scicat/test.png"
@@ -71,6 +81,7 @@ async def auth_callback(request: Request, code: str):
             "redirect_uri": ORCID_REDIRECT_URI,
         })
         token_data = response.json()
+        request.session.clear()
         request.session["orcid_id"] = token_data.get("orcid")
         request.session["access_token"] = token_data.get("access_token")
     return RedirectResponse("/ingest")
@@ -78,14 +89,21 @@ async def auth_callback(request: Request, code: str):
 @app.get("/ingest")
 async def ingest(request: Request):
     orcid_id = request.session.get("orcid_id")
+    print(f"ORCID ID from session: {orcid_id}")
+
     if not orcid_id:
-        return RedirectResponse("/login")
+        return JSONResponse(status_code=401, content={"error": "No ORCID iD found in session."})
+
+    if orcid_id not in AUTHORIZED_ORCIDS:
+        print("Unauthorized ORCID iD access attempt.")
+        return JSONResponse(status_code=403, content={"error": f"Unauthorized ORCID iD: {orcid_id}"})
 
     ensure_minio_bucket()
     if os.path.exists(FILE_PATH) and (FILE_PATH.endswith(".csv") or FILE_PATH.endswith(".json")):
         file_url = upload_to_minio(FILE_PATH)
         register_in_scicat(FILE_PATH, file_url, orcid_id)
-        return {"message": f"File {FILE_PATH} successfully ingested into MinIO and SciCat by {orcid_id}."}
+        threading.Thread(target=shutdown).start()
+        return HTMLResponse("<h3>✅ File successfully ingested. You can close this tab.</h3>")
     return {"error": "Invalid file path or format."}
 
 def ensure_minio_bucket():
@@ -177,6 +195,11 @@ def register_in_scicat(file_path: str, file_url: str, orcid_id: str):
     scicat_client.upload_dataset_origdatablock(dataset_id, datablock)
     upload_thumbnail(dataset_id, THUMBNAIL_PATH)
 
+def shutdown():
+    import time
+    time.sleep(1)
+    os._exit(0)
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("orcid_minio:app", host="0.0.0.0", port=8000, reload=True)
+    threading.Timer(1.0, lambda: webbrowser.open("https://3c5a-47-152-133-226.ngrok-free.app/login")).start()
+    uvicorn.run("orcid_ingest:app", host="0.0.0.0", port=8000)
