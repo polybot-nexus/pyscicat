@@ -30,7 +30,7 @@ SCICAT_PASSWORD = "aman"
 
 ORCID_CLIENT_ID = "APP-Z7EPO5WHGU2XEWPJ"
 ORCID_CLIENT_SECRET = "c86d92d8-b809-426c-a7a0-36d42a8c9f50"
-ORCID_REDIRECT_URI = "https://3c5a-47-152-133-226.ngrok-free.app/auth/callback"
+ORCID_REDIRECT_URI = "https://57f5-47-152-133-226.ngrok-free.app/auth/callback"
 ORCID_AUTH_URL = "https://orcid.org/oauth/authorize"
 ORCID_TOKEN_URL = "https://orcid.org/oauth/token"
 
@@ -201,5 +201,5 @@ def shutdown():
     os._exit(0)
 
 if __name__ == "__main__":
-    threading.Timer(1.0, lambda: webbrowser.open("https://3c5a-47-152-133-226.ngrok-free.app/login")).start()
+    threading.Timer(1.0, lambda: webbrowser.open("https://57f5-47-152-133-226.ngrok-free.app/login")).start()
     uvicorn.run("orcid_ingest:app", host="0.0.0.0", port=8000)
