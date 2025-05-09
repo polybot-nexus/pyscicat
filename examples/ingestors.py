@@ -98,13 +98,14 @@ def register_in_scicat(file_path: str, file_url: str, orcid_id: str, thumbnail_p
 
         metadata = extract_metadata(file_path)
         ownable = Ownable(ownerGroup="rpl-team", accessGroups=["rpl", "public"])
+        time_now = datetime.now().astimezone().isoformat()
         dataset = Dataset(
             path=file_path,
             size=metadata.get("size", 0),
             owner=orcid_id,
             contactEmail=f"{orcid_id}@orcid.org",
             creationLocation="RPL Server",
-            creationTime=datetime.now().astimezone().isoformat(),
+            creationTime=time_now,
             type="raw",
             proposalId="experiment-001",
             dataFormat=metadata.get("file_type", "unknown"),
@@ -139,7 +140,7 @@ def upload_thumbnail(dataset_id: str, path: str, caption="Thumbnail Image"):
             return
         encoded = encode_thumbnail(Path(path))
         attachment = Attachment(datasetId=dataset_id, thumbnail=encoded, caption=caption,
-                                ownerGroup="rpl-team", accessGroups=["rpl", "public"])
+                                ownerGroup="rpl-team", accessGroups=["rpl", "public"],createdAt=datetime.now().astimezone().isoformat())
         scicat_client.upload_attachment(attachment)
         logging.info(f"Thumbnail uploaded for dataset {dataset_id}")
     except Exception as e:
